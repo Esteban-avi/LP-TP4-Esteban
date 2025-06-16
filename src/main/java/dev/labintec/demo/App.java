@@ -11,6 +11,9 @@ import dev.labintec.model.RepositoryTransaction;
 import dev.labintec.model.RepositoryUser;
 import dev.labintec.model.entities.Tramite;
 import dev.labintec.model.entities.Usuario;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.EntityManagerFactory;
+import jakarta.persistence.Persistence;
 import java.sql.Connection;
 import java.util.List;
 import java.util.Scanner;
@@ -32,12 +35,14 @@ public class App {
     public static void main(String[] args) {
         
         // Conexión a la base de datos
-        DBConexion cone = DBConexion.getInstancia();
-        Connection c = cone.getConnection();
-        System.out.println("Conexion: " + c);
+//        DBConexion cone = DBConexion.getInstancia();
+//        Connection c = cone.getConnection();
+//        System.out.println("Conexion: " + c);
+        EntityManagerFactory emf = Persistence.createEntityManagerFactory("miUP");
+        EntityManager em = emf.createEntityManager();
         
         // Repositorio
-        RepositoryUser CRUDuser = new RepositoryUser(c);
+        RepositoryUser CRUDuser = new RepositoryUser(em);
         int opcion;
         boolean salir = false;
         Scanner scanner = new Scanner(System.in);
@@ -84,6 +89,7 @@ public class App {
                 System.out.print("Ingrese ID a buscar: ");
                 int idBuscar = scanner.nextInt();
                 Usuario usuarioID = CRUDuser.read(idBuscar);
+                System.out.println(usuarioID);
                break;
 
                
@@ -146,45 +152,6 @@ public class App {
         scanner.close();
         System.out.println("");
         
-//        // Crear usuarios
-//        Usuario user1 = new Usuario("esteban", "1234");
-//        Usuario user2 = new Usuario("mica", "4321");
-//        
-//        CRUDuser.create(user1);
-//        CRUDuser.create(user2);
-//        
-//        List<Usuario> usuarios = CRUDuser.readAll();
-//        
-//        for (Usuario u : usuarios) {
-//            System.out.println(u);
-//        }
-//        
-//        user1 = CRUDuser.readByUsername(user1.getUsername());
-//        System.out.println(user1);
-//        
-//        user2 = CRUDuser.read(user2.getId());
-//        System.out.println(user2);
-//        
-//        CRUDuser.delete(user2.getId());
-//        
-        
-
-        
-//        AuthenticationService au = new AuthenticationService(CRUDuser);
-//        long userid = au.signin(user1.getUsername(), user1.getPassword());
-//        System.out.println("ID del usuario: " + userid);
-        
-//        RepositoryTransaction CRUDtramite = new RepositoryTransaction(c);
-//        Tramite t1 = new Tramite("Constancia de alumno regular", "Aprobado", "Tramite para alumno");
-//        Tramite t2 = new Tramite("Inscripcion a mesas de examen", "Rechazado", "Tramite para alumno");
-//        
-//        CRUDtramite.create(t1);
-//        CRUDtramite.create(t2);
-//        
-//        List<Tramite> tramites = CRUDtramite.readAll();
-//        for (Tramite t : tramites){
-//            System.out.println(t);
-//        }
         
     }
 }

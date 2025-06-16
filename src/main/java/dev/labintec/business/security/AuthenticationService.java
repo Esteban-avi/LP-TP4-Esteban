@@ -8,6 +8,8 @@ import dev.labintec.model.IRepo;
 
 import dev.labintec.model.RepositoryUser;
 import dev.labintec.model.entities.Usuario;
+import jakarta.persistence.NoResultException;
+import jakarta.persistence.TypedQuery;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -30,26 +32,23 @@ public class AuthenticationService implements IAuthService {
 
     @Override
     public long signin(String username, String password) {
-        Usuario user = null;
-
+        
         try {
-            String query = "SELECT * FROM Usuario WHERE username = ? AND contra = ?";
-            PreparedStatement ps = repo.getCon().prepareStatement(query);
-            ps.setString(1, username);
-            ps.setString(2, password);
-            ResultSet rs = ps.executeQuery();
+            TypedQuery<Usuario> query = repo.getE().createQuery("SELECT u FROM Usuario u WHERE u.username = :username AND u.password = :password", Usuario.class);
+            query.setParameter("username", username);
+            query.setParameter("password", password);
 
-            if (rs.next()) { // Si hay resultados, crea el usuario
-                user = new Usuario(rs.getInt("id"), rs.getString("username"), rs.getString("contra"));
-                return user.getId();
-            }
+            Usuario user = query.getSingleResult();
             
-            rs.close();
-            ps.close();
-        } catch (SQLException ex) {
+            return user.getId();  // Devuelve el ID si encuentra el usuario
+
+        } catch (NoResultException ex) {
+            System.out.println("Usuario o contraseña incorrectos.");
+        } catch (Exception ex) {
             System.out.println("Error en el inicio de sesión: " + ex.getMessage());
         }
 
-        return -1; // Devuelve ID si encuentra el usuar
-    }
+        return -1; // Si no encuentra nada o hay error
+}
+
 }

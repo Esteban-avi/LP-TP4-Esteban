@@ -7,6 +7,10 @@ package dev.labintec.model;
 
 import dev.labintec.database.DBConexion;
 import dev.labintec.model.entities.Usuario;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.EntityManagerFactory;
+import jakarta.persistence.NoResultException;
+import jakarta.persistence.Persistence;
 import java.io.File;
 import java.io.IOException;
 import java.sql.Connection;
@@ -24,196 +28,142 @@ import java.util.logging.Logger;
  */
 public class RepositoryUser implements IRepo<Usuario> {
     private Connection con;
+    EntityManagerFactory emf = Persistence.createEntityManagerFactory("miUP");
+    private EntityManager e; 
 
     public RepositoryUser(Connection con) {
         this.con = con;
     }
-
+    
+    
+    public RepositoryUser(EntityManager e) {
+        this.e = e;
+    }
+    
     
     @Override
     public void create(Usuario entity) {
         
         try {
-            
-            if (readByUsername(entity.getUsername()) != null) {
-                System.out.println("El nombre de usuario ya existe. Intente con otro.");
-                
+            e.getTransaction().begin();
+
+            e.persist(entity); // usamos el mismo objeto que recibimos como parametro, no hace falta crear otro
+
+            e.getTransaction().commit(); // Confirma cambios en la BD
+            System.out.println("Usuario creado exitosamente.");
+
+        } catch (Exception ex) {
+            if (e.getTransaction().isActive()) {
+                e.getTransaction().rollback(); // Revierte si hubo error
             }
-            else{
-                
-                // Consulta SQL para insertar un nuevo usuario en la tabla Usuario
-                 String query = "insert into Usuario (username, contra) values (?,?)";
+        System.out.println("Error al crear el usuario: " + ex.getMessage());
 
-                 // Se prepara la sentencia con la conexión activa
-                 PreparedStatement ps = con.prepareStatement(query);
-
-                 // Se establece el valor del primer parámetro: nombre de usuario
-                 ps.setString(1, entity.getUsername());
-                 // Se establece el valor del segundo parámetro: contraseña
-                 ps.setString(2, entity.getPassword());
-
-                 // Se ejecuta la sentencia de inserción
-                 ps.executeUpdate();
-                 // Se cierra el PreparedStatement
-                 ps.close(); 
-                 
-                 System.out.println("Usuario creado.");
-            }
-          
-            
-        } catch (SQLException ex) {
-            System.out.println("No se pudo crear la consulta. " + ex.getMessage());
         }
-        
     }
-
+       
+    
+    
     @Override
     public Usuario read(int id) {
-        Usuario u = null; // Se inicializa el objeto usuario como null
-
+        
+        Usuario usuario = null;
         try {
-            
-            
-            // Consulta SQL para obtener un usuario por su ID
-            String query = "select * from usuario where id = ?";
-                
-            // Se prepara la sentencia con la conexión activa
-            PreparedStatement psmt = con.prepareStatement(query);
-            
-            // Se asigna el valor del parámetro ID
-            psmt.setInt(1, id);
-            
-            // Se ejecuta la consulta
-            ResultSet rs = psmt.executeQuery();
-            
-            // Si hay un resultado, se crea el objeto Usuario con los datos obtenidos
-            if (rs.next()) { 
-                u = new Usuario(rs.getInt("id"), rs.getString("username"), rs.getString("contra"));
-                System.out.println("Usuario encotrado.");
-                //System.out.println();
-                System.out.println("ID: " + u.getId());
-                //System.out.println();
-                System.out.println("Username: " +u.getUsername());
-            }else{
-                System.out.println("Usuario no encontrado.");
-            }
-            
-            // Se cierran los recursos
-            rs.close();
-            psmt.close();
-
-            
-        } catch (SQLException ex) {
-            System.out.println("Error al conectar a la base datos. " + ex.getMessage());
+            usuario = e.find(Usuario.class, id);
+        } catch (Exception e) {
+            System.out.println("Error al buscar usuario: " + e.getMessage());
         }
         
-        return u; // Retorna el usuario encontrado (o null si no existe)
-      
+        return usuario;
+       
     }
 
     @Override
     public List<Usuario> readAll() {
-        List<Usuario> usuarios = new ArrayList<>(); // Lista donde se almacenarán todos los usuarios
+        List<Usuario> usuarios = new ArrayList<>();
         
         try {
-            // Consulta SQL para seleccionar todos los usuarios
-            String query = "select * from usuario";
-            PreparedStatement psmt = con.prepareStatement(query);
-            ResultSet rs = psmt.executeQuery();
+            usuarios = e.createQuery("SELECT u FROM Usuario u", Usuario.class).getResultList();
             
-            // Recorre cada fila del resultado y crea un objeto Usuario
-            while(rs.next()) {
-                Usuario u = new Usuario();
-                u.setId(rs.getInt("id"));
-                u.setUsername(rs.getString("username"));
-                // Nota: aquí no se recupera la contraseña por seguridad
-                
-                usuarios.add(u); // Agrega el usuario a la lista
-            }
-            psmt.close();
-            rs.close();
+//            for(Usuario U : usuarios){
+//                System.out.println(U);
+//            }
             
-        } catch (SQLException ex) {
-            System.out.println("Error al conectar a la base datos. " + ex.getMessage());
+        } catch (Exception ex) {
+            System.out.println("Error al obtener la lista de usuarios: " + ex.getMessage());
         }
         
-        return usuarios; // Retorna la lista de usuarios
+        return usuarios;
     }
 
     @Override
     public void update(Usuario entity) {
+        
         try {
-            // Consulta SQL para actualizar un usuario según su ID
-            String query = "update Usuario set id=?, username=? where id = ?";
-            PreparedStatement psmt = con.prepareStatement(query);
-            psmt.setInt(1, entity.getId());
-            psmt.setString(2, entity.getUsername());
-            psmt.setInt(3, entity.getId());
-            psmt.executeUpdate(); // Ejecuta la actualización
-            psmt.close();   // Cierra el statement
-        } catch (SQLException ex) {
-            System.out.println("No se pudo crear la consulta. " + ex.getMessage());
+            
+            e.getTransaction().begin();
+            e.merge(entity);  // Actualiza los datos del usuario
+            e.getTransaction().commit();
+            System.out.println("Usuario actualizado correctamente.");
+            
+        } catch (Exception ex) {
+            if (e.getTransaction().isActive()) {
+                e.getTransaction().rollback();
+            }
+            System.out.println("Error al actualizar el usuario: " + ex.getMessage());
         }
+        
     }
 
     @Override
     public void delete(int id) {
         
         try {
-            Usuario u = this.read(id);
+            e.getTransaction().begin();
+            Usuario usuario = e.find(Usuario.class, id);
             
-            if(u == null){
-                System.out.println("No se encontro el usuario con ID: " + id);
-                return;
+            if (usuario != null) {
+                e.remove(usuario);  // Elimina el usuario si existe
+                System.out.println("Usuario eliminado correctamente.");
+            } else {
+                System.out.println("No se encontró un usuario con ese ID.");
             }
-            else{
-                
-                // Consulta SQL para eliminar un usuario por su ID
-                 String query = "delete from Usuario where id = ?";
-                 PreparedStatement psmt = con.prepareStatement(query);
-                 psmt.setInt(1, id);   // Se establece el ID del usuario a eliminar
-                 psmt.executeUpdate(); // Ejecuta la eliminación directamente
-                 psmt.close();         // Cierra el statement 
-                 System.out.println("Usuario Eliminado.");
+            
+            e.getTransaction().commit();
+            
+        } catch (Exception ex) {
+            
+            if (e.getTransaction().isActive()) {
+                e.getTransaction().rollback();
             }
+            System.out.println("Error al eliminar el usuario: " + ex.getMessage());
+        }
+}
 
-    } catch (SQLException ex) {
-        System.out.println("Error al eliminar usuario: " + ex.getMessage());
-    }
-        
-    }
 
     public Usuario readByUsername(String username) {
-        Usuario u = null; // Se inicializa el objeto usuario como null
+        Usuario usuario = null;
         
         try {
-            // Consulta SQL para obtener un usuario por su nombre de usuario
-            String query = "select * from Usuario where username = ?";
-            PreparedStatement psmt = con.prepareStatement(query);
-            psmt.setString(1, username); // Se establece el nombre de usuario como parámetro
-            ResultSet rs = psmt.executeQuery();
-            
-            // Si encuentra un resultado, lo carga en un objeto Usuario
-            while(rs.next()) {
-                u = new Usuario(rs.getInt("id"), rs.getString("username"), rs.getString("contra"));
-                
-            }
-            psmt.close();
-            rs.close();
-        } catch (SQLException ex) {
-            Logger.getLogger(RepositoryUser.class.getName()).log(Level.SEVERE, null, ex);
+            usuario = e.createQuery("SELECT u FROM Usuario u WHERE u.username = :username", Usuario.class)
+                   .setParameter("username", username)
+                   .getSingleResult();
+        } catch (NoResultException ex) {
+            System.out.println("No se encontró un usuario con ese nombre.");
+        } catch (Exception ex) {
+            System.out.println("Error al buscar usuario por username: " + ex.getMessage());
         }
         
-        return u;
-    }
-    
-    // Getter para obtener la conexión a la base de datos
-    public Connection getCon() {
-        return con;
+        return usuario;
     }
 
-    public void setCon(Connection con) {
-        this.con = con;
+    public EntityManager getE() {
+        return e;
     }
+
+    public void setE(EntityManager e) {
+        this.e = e;
+    }
+    
+
     
 }

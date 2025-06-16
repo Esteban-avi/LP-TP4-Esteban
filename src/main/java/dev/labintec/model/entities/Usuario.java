@@ -4,13 +4,30 @@
  */
 package dev.labintec.model.entities;
 
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+
 /**
  *
  * @author HP Pavilion
  */
-public class Usuario {
+@Entity
+@Table(name="Usuario")
+
+public class Usuario { //Se convierte en una entidad JPA
+    
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
    private int id;
+   
+   @Column(name="username") // se usa esta anotación cuando difieren los nombres 
    private String username;
+   
+   @Column(name="contra")
    private String password;
 
     public Usuario() {
@@ -52,7 +69,6 @@ public class Usuario {
     public String toString() {
         return "Usuario{" + "id=" + id + ", username=" + username + ", password=" + password + '}';
     }
-   
    
    
 }
